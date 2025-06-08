@@ -4,83 +4,46 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
-  // Function to fetch activities from API
+  // Obtener y mostrar actividades
   async function fetchActivities() {
-    try {
-      const response = await fetch("/activities");
-      const activities = await response.json();
-
-      // Clear loading message
-      activitiesList.innerHTML = "";
-
-      // Populate activities list
-      Object.entries(activities).forEach(([name, details]) => {
-        const activityCard = document.createElement("div");
-        activityCard.className = "activity-card";
-
-        const spotsLeft = details.max_participants - details.participants.length;
-
-        activityCard.innerHTML = `
-          <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+    const res = await fetch('/activities');
+    const data = await res.json();
+    const list = document.getElementById('activities-list');
+    list.innerHTML = '';
+    Object.entries(data).forEach(([name, info]) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <strong>${name}</strong>: ${info.description}<br>
+            <em>${info.schedule}</em><br>
+            Participantes: ${info.participants.length}/${info.max_participants}
+            <form onsubmit="signup(event, '${name}')">
+                <input type="email" name="email" placeholder="Tu email" required>
+                <button type="submit">Apuntarse</button>
+            </form>
+            <hr>
         `;
-
-        activitiesList.appendChild(activityCard);
-
-        // Add option to select dropdown
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        activitySelect.appendChild(option);
-      });
-    } catch (error) {
-      activitiesList.innerHTML = "<p>Failed to load activities. Please try again later.</p>";
-      console.error("Error fetching activities:", error);
-    }
+        list.appendChild(li);
+    });
   }
 
-  // Handle form submission
-  signupForm.addEventListener("submit", async (event) => {
+  // Registrar estudiante en una actividad
+  async function signup(event, activityName) {
     event.preventDefault();
-
-    const email = document.getElementById("email").value;
-    const activity = document.getElementById("activity").value;
-
-    try {
-      const response = await fetch(
-        `/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`,
-        {
-          method: "POST",
-        }
-      );
-
-      const result = await response.json();
-
-      if (response.ok) {
-        messageDiv.textContent = result.message;
-        messageDiv.className = "success";
-        signupForm.reset();
-      } else {
-        messageDiv.textContent = result.detail || "An error occurred";
-        messageDiv.className = "error";
-      }
-
-      messageDiv.classList.remove("hidden");
-
-      // Hide message after 5 seconds
-      setTimeout(() => {
-        messageDiv.classList.add("hidden");
-      }, 5000);
-    } catch (error) {
-      messageDiv.textContent = "Failed to sign up. Please try again.";
-      messageDiv.className = "error";
-      messageDiv.classList.remove("hidden");
-      console.error("Error signing up:", error);
+    const form = event.target;
+    const email = form.email.value;
+    const res = await fetch(`/activities/${encodeURIComponent(activityName)}/signup?email=${encodeURIComponent(email)}`, {
+        method: 'POST'
+    });
+    if (res.ok) {
+        alert('¡Inscripción exitosa!');
+        fetchActivities();
+    } else {
+        const err = await res.json();
+        alert('Error: ' + err.detail);
     }
-  });
+    form.reset();
+  }
 
-  // Initialize app
-  fetchActivities();
+  // Inicializar al cargar
+  window.onload = fetchActivities;
 });
